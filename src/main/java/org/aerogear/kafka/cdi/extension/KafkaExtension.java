@@ -133,13 +133,6 @@ public class KafkaExtension<X> implements Extension {
 
             frameworkProcessor.init(bootstrapServers, annotatedStreamMethod, bm);
         });
-
-
-
-
-
-
-
     }
 
     public void beforeShutdown(@Observes final BeforeShutdown bs) {
@@ -170,24 +163,38 @@ public class KafkaExtension<X> implements Extension {
                         if (field.getType().isAssignableFrom(SimpleKafkaProducer.class)) {
                             field.setAccessible(Boolean.TRUE);
 
-                            final Serde<?> keySerde = CafdiSerdes.serdeFrom((Class<?>)  ((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]);
-                            final Serde<?> valSerde = CafdiSerdes.serdeFrom((Class<?>)  ((ParameterizedType)field.getGenericType()).getActualTypeArguments()[1]);
-
-                            final org.apache.kafka.clients.producer.Producer p = createInjectionProducer(
-                                    bootstrapServers,
-                                    keySerde.serializer().getClass(),
-                                    valSerde.serializer().getClass(),
-                                    keySerde.serializer(),
-                                    valSerde.serializer()
-                            );
-
-                            managedProducers.add(p);
-
                             try {
-                                field.set(instance, p);
-                            } catch (IllegalArgumentException
-                                    | IllegalAccessException e) {
-                                logger.error("could not inject producer", e);
+	                            Class<? extends Serializer> valueSerializerClass = annotation.valueSerializer();
+	                            Serializer<?> valueSerializer;
+
+	                            final Serde<?> keySerde = CafdiSerdes.serdeFrom((Class<?>)  ((ParameterizedType)field.getGenericType()).getActualTypeArguments()[0]);
+	                            if(valueSerializerClass.equals(Producer.DEFAULT_SERIALIZER.class)) {
+	                                Serde<?> valSerde = CafdiSerdes.serdeFrom((Class<?>)  ((ParameterizedType)field.getGenericType()).getActualTypeArguments()[1]);
+	                                valueSerializerClass = valSerde.serializer().getClass();
+	                                valueSerializer = valSerde.serializer();
+	                            } else {
+	                                valueSerializer = valueSerializerClass.newInstance();
+	                            }
+
+	                            final org.apache.kafka.clients.producer.Producer p = createInjectionProducer(
+	                                    bootstrapServers,
+	                                    keySerde.serializer().getClass(),
+	                                    valueSerializerClass,
+	                                    keySerde.serializer(),
+	                                    valueSerializer
+	                            );
+
+	                            managedProducers.add(p);
+
+	                            try {
+	                                field.set(instance, p);
+	                            } catch (IllegalArgumentException
+	                                    | IllegalAccessException e) {
+	                                logger.error("could not inject producer", e);
+	                                e.printStackTrace();
+	                            }
+                            } catch (IllegalAccessException | InstantiationException e) {
+                                logger.error("Could not instantiate serializer", e);
                                 e.printStackTrace();
                             }
                         }

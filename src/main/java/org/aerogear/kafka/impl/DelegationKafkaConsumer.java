@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,37 +97,51 @@ public class DelegationKafkaConsumer implements Runnable {
         }
     }
 
-    private <K, V> void createKafkaConsumer(final Class<K> keyType, final Class<V> valueType, final Properties consumerProperties) {
-        consumer = new KafkaConsumer<K, V>(consumerProperties, CafdiSerdes.serdeFrom(keyType).deserializer(), CafdiSerdes.serdeFrom(valueType).deserializer());
+    private <K, V> void createKafkaConsumer(final Deserializer<K> keyDeserializer, final Deserializer<V> valueDeserializer, final Properties consumerProperties) {
+        consumer = new KafkaConsumer<K, V>(consumerProperties, keyDeserializer, valueDeserializer);
     }
 
 
     public void initialize(final String bootstrapServers, final AnnotatedMethod annotatedMethod, final BeanManager beanManager) {
-        final Consumer consumerAnnotation = annotatedMethod.getAnnotation(Consumer.class);
-        this.topics = Arrays.asList(consumerAnnotation.topics());
-        final String groupId = consumerAnnotation.groupId();
-        final Class<?> recordKeyType = consumerAnnotation.keyType();
+        try {
+            final Consumer consumerAnnotation = annotatedMethod.getAnnotation(Consumer.class);
+            this.topics = Arrays.asList(consumerAnnotation.topics());
+            final String groupId = consumerAnnotation.groupId();
+            final Class<?> recordKeyType = consumerAnnotation.keyType();
 
-        this.annotatedListenerMethod = annotatedMethod;
+            this.annotatedListenerMethod = annotatedMethod;
 
-        final Class<?> keyTypeClass = consumerKeyType(recordKeyType, annotatedMethod);
-        final Class<?> valTypeClass = consumerValueType(annotatedMethod);
+            final Class<?> keyTypeClass = consumerKeyType(recordKeyType, annotatedMethod);
+            final Class<?> valTypeClass = consumerValueType(annotatedMethod);
 
-        properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        properties.put(GROUP_ID_CONFIG, groupId);
-        properties.put(AUTO_OFFSET_RESET_CONFIG, consumerAnnotation.offset());
-        properties.put(KEY_DESERIALIZER_CLASS_CONFIG,  CafdiSerdes.serdeFrom(keyTypeClass).deserializer().getClass());
-        properties.put(VALUE_DESERIALIZER_CLASS_CONFIG,CafdiSerdes.serdeFrom(valTypeClass).deserializer().getClass());
+            Class<? extends Deserializer<?>> deserializerValueClass = consumerAnnotation.valueDeserializerClass();
+            Deserializer<?> deserializerValue;
+            if(deserializerValueClass.equals(Consumer.DEFAULT_DESERIALIZER.class)) {
+                deserializerValue = CafdiSerdes.serdeFrom(valTypeClass).deserializer();
+                deserializerValueClass = (Class<? extends Deserializer<?>>) deserializerValue.getClass();
+            } else {
+                deserializerValue = deserializerValueClass.newInstance();
+            }
 
-        createKafkaConsumer(keyTypeClass, valTypeClass, properties);
-        this.consumerRebalanceListener = createConsumerRebalanceListener(consumerAnnotation.consumerRebalanceListener());
+            properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+            properties.put(GROUP_ID_CONFIG, groupId);
+            properties.put(AUTO_OFFSET_RESET_CONFIG, consumerAnnotation.offset());
+            properties.put(KEY_DESERIALIZER_CLASS_CONFIG,  CafdiSerdes.serdeFrom(keyTypeClass).deserializer().getClass());
+            properties.put(VALUE_DESERIALIZER_CLASS_CONFIG,CafdiSerdes.serdeFrom(valTypeClass).deserializer().getClass());
 
-        final Set<Bean<?>> beans = beanManager.getBeans(annotatedListenerMethod.getJavaMember().getDeclaringClass());
-        final Bean<?> propertyResolverBean = beanManager.resolve(beans);
-        final CreationalContext<?> creationalContext = beanManager.createCreationalContext(propertyResolverBean);
+            createKafkaConsumer(CafdiSerdes.serdeFrom(keyTypeClass).deserializer(), deserializerValue, properties);
+            this.consumerRebalanceListener = createConsumerRebalanceListener(consumerAnnotation.consumerRebalanceListener());
 
-        consumerInstance = beanManager.getReference(propertyResolverBean,
-                annotatedListenerMethod.getJavaMember().getDeclaringClass(), creationalContext);
+            final Set<Bean<?>> beans = beanManager.getBeans(annotatedListenerMethod.getJavaMember().getDeclaringClass());
+            final Bean<?> propertyResolverBean = beanManager.resolve(beans);
+            final CreationalContext<?> creationalContext = beanManager.createCreationalContext(propertyResolverBean);
+
+            consumerInstance = beanManager.getReference(propertyResolverBean,
+                    annotatedListenerMethod.getJavaMember().getDeclaringClass(), creationalContext);
+        } catch(InstantiationException | IllegalAccessException e) {
+            logger.error("Could not instantiate deserializer", e);
+            e.printStackTrace();
+        }
     }
 
     @Override
