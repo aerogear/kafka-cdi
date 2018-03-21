@@ -15,17 +15,16 @@
  */
 package org.aerogear.kafka.cdi.annotation;
 
-import org.aerogear.kafka.DefaultConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.Serializer;
-
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.aerogear.kafka.DefaultConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.common.serialization.Deserializer;
 
 /**
  * Simple annotation for POJO beans, to advertise their one argument methods as a consumer for a given Kafka topic.

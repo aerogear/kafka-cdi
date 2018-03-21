@@ -28,12 +28,14 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.inject.spi.AnnotatedMethod;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.BeanManager;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -121,13 +123,14 @@ public class DelegationKafkaConsumer implements Runnable {
                 deserializerValueClass = (Class<? extends Deserializer<?>>) deserializerValue.getClass();
             } else {
                 deserializerValue = deserializerValueClass.newInstance();
+                deserializerValue.configure(new HashMap<String, Class>() {{ put("consumerClass", annotatedMethod.getJavaMember().getParameterTypes()[0]); } } , false);
             }
 
             properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             properties.put(GROUP_ID_CONFIG, groupId);
             properties.put(AUTO_OFFSET_RESET_CONFIG, consumerAnnotation.offset());
-            properties.put(KEY_DESERIALIZER_CLASS_CONFIG,  CafdiSerdes.serdeFrom(keyTypeClass).deserializer().getClass());
-            properties.put(VALUE_DESERIALIZER_CLASS_CONFIG,CafdiSerdes.serdeFrom(valTypeClass).deserializer().getClass());
+            properties.put(KEY_DESERIALIZER_CLASS_CONFIG, CafdiSerdes.serdeFrom(keyTypeClass).deserializer().getClass());
+            properties.put(VALUE_DESERIALIZER_CLASS_CONFIG, deserializerValueClass);
 
             createKafkaConsumer(CafdiSerdes.serdeFrom(keyTypeClass).deserializer(), deserializerValue, properties);
             this.consumerRebalanceListener = createConsumerRebalanceListener(consumerAnnotation.consumerRebalanceListener());
