@@ -22,12 +22,17 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.apache.kafka.common.serialization.Serializer;
+
 /**
  * Simple annotation for POJO beans, to inject a Producer util implementation, with a given Kafka topic.
  */
 @Inherited
-@Target({ElementType.FIELD})
+@Target({ ElementType.FIELD })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Producer {
+	Class<? extends Serializer<?>> valueSerializer() default DEFAULT_SERIALIZER.class;
+
+	static abstract class DEFAULT_SERIALIZER implements Serializer<Object> {}
 }

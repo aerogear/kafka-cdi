@@ -17,6 +17,8 @@ package org.aerogear.kafka.cdi.annotation;
 
 import org.aerogear.kafka.DefaultConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serializer;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -37,5 +39,8 @@ public @interface Consumer {
     String groupId();
     String offset() default "latest";
     Class<?> keyType() default String.class;
+    Class<? extends Deserializer<?>> valueDeserializerClass() default DEFAULT_DESERIALIZER.class;
     Class<? extends ConsumerRebalanceListener> consumerRebalanceListener() default DefaultConsumerRebalanceListener.class;
+
+    static abstract class DEFAULT_DESERIALIZER implements Deserializer<Object> {}
 }
