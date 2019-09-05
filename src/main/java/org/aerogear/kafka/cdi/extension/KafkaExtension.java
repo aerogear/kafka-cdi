@@ -64,6 +64,7 @@ import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_
 public class KafkaExtension<X> implements Extension {
 
     private String bootstrapServers = null;
+    private Properties additionalConfig = null;
     private final Set<AnnotatedMethod<?>> listenerMethods = newSetFromMap(new ConcurrentHashMap<>());
     private final Set<AnnotatedMethod<?>> streamProcessorMethods = newSetFromMap(new ConcurrentHashMap<>());
     private final Set<DelegationKafkaConsumer> managedConsumers = newSetFromMap(new ConcurrentHashMap<>());
@@ -81,6 +82,11 @@ public class KafkaExtension<X> implements Extension {
         if (kafkaConfig != null && bootstrapServers == null) {
             logger.info("setting bootstrap.servers IP for, {}", kafkaConfig.bootstrapServers());
             bootstrapServers = VerySimpleEnvironmentResolver.simpleBootstrapServerResolver(kafkaConfig.bootstrapServers());
+
+            additionalConfig = new Properties();
+            Arrays.stream(kafkaConfig.additionalConfig()).forEach(kafkaAdditionalConfig -> {
+                additionalConfig.put(kafkaAdditionalConfig.key(), kafkaAdditionalConfig.value());
+            });
         }
     }
 
@@ -238,7 +244,8 @@ public class KafkaExtension<X> implements Extension {
 
     private org.apache.kafka.clients.producer.Producer createInjectionProducer(final String bootstrapServers, final Class<?> keySerializerClass, final Class<?> valSerializerClass, final Serializer<?> keySerializer, final Serializer<?> valSerializer ) {
 
-        final Properties properties = new Properties();
+        final Properties properties = new Properties(additionalConfig);
+
         properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         properties.put(KEY_SERIALIZER_CLASS_CONFIG, keySerializerClass);
         properties.put(VALUE_SERIALIZER_CLASS_CONFIG, valSerializerClass);

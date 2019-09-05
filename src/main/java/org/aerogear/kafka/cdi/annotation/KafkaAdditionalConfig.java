@@ -16,21 +16,17 @@
 package org.aerogear.kafka.cdi.annotation;
 
 import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 
 /**
- * Global configuration annotation. Only first occurrence will be used.
+ * Additional configuration annotation. Specifcy custom configuration for {@link KafkaConfig}.
  */
 @Inherited
-@Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-public @interface KafkaConfig {
-    String bootstrapServers();
-
-    KafkaAdditionalConfig[] additionalConfig() default {};
+public @interface KafkaAdditionalConfig {
+    String key();
+    String value();
 }
