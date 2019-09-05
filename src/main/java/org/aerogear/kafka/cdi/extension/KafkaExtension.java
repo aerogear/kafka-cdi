@@ -243,12 +243,13 @@ public class KafkaExtension<X> implements Extension {
     }
 
     private org.apache.kafka.clients.producer.Producer createInjectionProducer(final String bootstrapServers, final Class<?> keySerializerClass, final Class<?> valSerializerClass, final Serializer<?> keySerializer, final Serializer<?> valSerializer ) {
-
-        final Properties properties = new Properties(additionalConfig);
+        final Properties properties = new Properties();
 
         properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         properties.put(KEY_SERIALIZER_CLASS_CONFIG, keySerializerClass);
         properties.put(VALUE_SERIALIZER_CLASS_CONFIG, valSerializerClass);
+
+        properties.putAll(additionalConfig);
 
         return new InjectedKafkaProducer(properties, keySerializer, valSerializer);
     }
