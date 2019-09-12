@@ -104,7 +104,7 @@ public class DelegationKafkaConsumer implements Runnable {
     }
 
 
-    public void initialize(final String bootstrapServers, final AnnotatedMethod annotatedMethod, final BeanManager beanManager) {
+    public void initialize(final String bootstrapServers, final AnnotatedMethod annotatedMethod, final BeanManager beanManager, Properties additionalConfig) {
         final Consumer consumerAnnotation = annotatedMethod.getAnnotation(Consumer.class);
 
         this.topics = Arrays.stream(consumerAnnotation.topics())
@@ -124,6 +124,8 @@ public class DelegationKafkaConsumer implements Runnable {
         properties.put(AUTO_OFFSET_RESET_CONFIG, consumerAnnotation.offset());
         properties.put(KEY_DESERIALIZER_CLASS_CONFIG,  CafdiSerdes.serdeFrom(keyTypeClass).deserializer().getClass());
         properties.put(VALUE_DESERIALIZER_CLASS_CONFIG,CafdiSerdes.serdeFrom(valTypeClass).deserializer().getClass());
+
+        properties.putAll(additionalConfig);
 
         createKafkaConsumer(keyTypeClass, valTypeClass, properties);
         this.consumerRebalanceListener = createConsumerRebalanceListener(consumerAnnotation.consumerRebalanceListener());

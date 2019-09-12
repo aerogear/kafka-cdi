@@ -126,7 +126,7 @@ public class KafkaExtension<X> implements Extension {
             final DelegationKafkaConsumer frameworkConsumer = (DelegationKafkaConsumer) bm.getReference(bean, DelegationKafkaConsumer.class, ctx);
 
             // hooking it all together
-            frameworkConsumer.initialize(bootstrapServers, consumerMethod, bm);
+            frameworkConsumer.initialize(bootstrapServers, consumerMethod, bm, additionalConfig);
 
             managedConsumers.add(frameworkConsumer);
             submitToExecutor(frameworkConsumer);
